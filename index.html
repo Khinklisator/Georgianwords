@@ -306,7 +306,9 @@ async function loadWords() {
     if (!res.ok) { setSync('err', 'Ошибка'); return false; }
     const data = await res.json();
     fileSha = data.sha;
-    words = JSON.parse(atob(data.content.replace(/\n/g, '')));
+    const binary = atob(data.content.replace(/\n/g, ''));
+    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+    words = JSON.parse(new TextDecoder('utf-8').decode(bytes));
     setSync('ok', 'Синхронизировано');
     renderList();
     return true;
