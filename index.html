@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ქართული — Грузинский словарь</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F7F5F0; --surface: #FFFFFF; --border: #E5E0D8;
+    --text: #1C1A17; --text-muted: #7A7468; --gray65: #595959;
+    --accent: #B85C2A; --accent-light: #F5EDE6; --accent-mid: #D4784A;
+    --radius: 12px; --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
+    --font: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; }
+
+  /* HEADER */
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 60px; position: sticky; top: 0; z-index: 100; }
+  .logo { font-family: var(--font); font-size: 18px; color: var(--text); letter-spacing: -0.3px; }
+  .logo span { color: var(--accent); }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .sync-status { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
+  .sync-dot.ok { background: #4CAF50; }
+  .sync-dot.err { background: #E53935; }
+  .sync-dot.loading { background: var(--accent-mid); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .tabs { display: flex; gap: 4px; background: var(--bg); padding: 3px; border-radius: 8px; border: 1px solid var(--border); }
+  .tab { padding: 6px 16px; border: none; background: transparent; border-radius: 6px; font-family: var(--font); font-size: 13px; font-weight: 400; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
+  .tab.active { background: var(--surface); color: var(--text); font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .count-badge { background: var(--accent-light); color: var(--accent); font-size: 11px; padding: 2px 6px; border-radius: 10px; font-weight: 500; margin-left: 4px; }
+  main { max-width: 840px; margin: 0 auto; padding: 32px 24px; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* TOKEN SETUP */
+  .setup-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; max-width: 480px; margin: 60px auto; }
+  .setup-card h2 { font-size: 17px; font-weight: 500; margin-bottom: 8px; }
+  .setup-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.6; }
+  .setup-card input { width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-family: var(--font); font-size: 14px; color: var(--text); background: var(--bg); outline: none; margin-bottom: 12px; }
+  .setup-card input:focus { border-color: var(--accent-mid); background: var(--surface); }
+  .setup-error { font-size: 12px; color: #E53935; margin-bottom: 12px; display: none; }
+
+  /* TOOLBAR */
+  .toolbar { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; }
+  .search-wrap { flex: 1; position: relative; }
+  .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+  input[type="text"] { width: 100%; height: 40px; padding: 0 12px 0 38px; border: 1px solid var(--border); border-radius: 8px; font-family: var(--font); font-size: 14px; color: var(--text); background: var(--surface); outline: none; transition: border-color 0.15s; }
+  input[type="text"]:focus { border-color: var(--accent-mid); }
+  .btn { height: 40px; padding: 0 18px; border-radius: 8px; border: 1px solid var(--border); font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn-primary:hover { background: #A04D22; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-ghost { background: var(--surface); color: var(--text-muted); }
+  .btn-ghost:hover { background: var(--bg); color: var(--text); }
+
+  /* WORD LIST */
+  .word-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .word-list-header { display: grid; grid-template-columns: 2fr 2fr 2fr 40px; padding: 10px 16px; background: var(--bg); border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
+  .col-sort { cursor: pointer; display: flex; align-items: center; gap: 4px; user-select: none; }
+  .col-sort:hover { color: var(--text); }
+  .word-item { display: grid; grid-template-columns: 2fr 2fr 2fr 40px; padding: 12px 16px; border-bottom: 1px solid var(--border); align-items: center; transition: background 0.1s; }
+  .word-item:last-child { border-bottom: none; }
+  .word-item:hover { background: #FDFCFA; }
+  .word-ka { font-family: var(--font); font-size: 15px; color: var(--text); }
+  .word-tr { font-family: var(--font); font-size: 15px; color: var(--gray65); }
+  .word-ru { font-family: var(--font); font-size: 15px; color: var(--text); }
+  .del-btn { width: 28px; height: 28px; border: none; background: transparent; border-radius: 6px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; justify-content: center; transition: all 0.15s; opacity: 0; }
+  .word-item:hover .del-btn { opacity: 1; }
+  .del-btn:hover { background: #FEF0EC; color: var(--accent); }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty-icon { font-size: 32px; color: var(--border); margin-bottom: 12px; }
+
+  /* ADD FORM */
+  .add-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; display: none; }
+  .add-form.open { display: block; }
+  .add-form h3 { font-family: var(--font); font-weight: 500; font-size: 15px; margin-bottom: 16px; color: var(--text); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  .form-field label { display: block; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 6px; }
+  .form-field input { padding-left: 12px; font-size: 14px; }
+  .form-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+  .saving-text { font-size: 12px; color: var(--text-muted); display: none; }
+
+  /* FLASHCARDS */
+  .fc-controls { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+  .fc-progress { font-size: 13px; color: var(--text-muted); }
+  .fc-progress strong { color: var(--text); }
+  .fc-actions { display: flex; gap: 8px; }
+  .card-stage { display: flex; flex-direction: column; align-items: center; perspective: 1200px; margin-bottom: 32px; }
+  .card-wrap { width: 100%; max-width: 420px; aspect-ratio: 1 / 1; position: relative; cursor: pointer; }
+  .card-inner { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1); }
+  .card-inner.flipped { transform: rotateY(180deg); }
+  .card-face { position: absolute; inset: 0; border-radius: 16px; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; box-shadow: var(--shadow); }
+  .card-front { background: var(--surface); border: 1px solid var(--border); }
+  .card-back { background: var(--accent-light); border: 1px solid #E8C9B8; transform: rotateY(180deg); }
+  .card-ka { font-family: var(--font); font-size: 52px; font-weight: 300; color: var(--text); text-align: center; line-height: 1.1; margin-bottom: 10px; }
+  .card-tr { font-family: var(--font); font-size: 16px; font-weight: 300; color: var(--gray65); text-align: center; }
+  .card-ru { font-family: var(--font); font-size: 52px; font-weight: 300; color: var(--text); text-align: center; line-height: 1.1; margin-top: 20px; }
+  .card-nav { display: flex; align-items: center; gap: 32px; justify-content: center; }
+  .nav-btn { width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.15s; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .nav-btn:hover { color: var(--text); border-color: var(--accent-mid); }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .fc-empty { text-align: center; padding: 80px 20px; color: var(--text-muted); }
+
+  @media (max-width: 600px) {
+    header { padding: 0 16px; }
+    main { padding: 20px 16px; }
+    .form-row { grid-template-columns: 1fr; }
+    .word-list-header, .word-item { grid-template-columns: 1.5fr 1.5fr 1fr 32px; }
+    .card-ka, .card-ru { font-size: 36px; }
+    .header-right .sync-status span { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOKEN SETUP SCREEN -->
+<div id="setup-screen" style="display:none; padding: 20px;">
+  <div class="setup-card">
+    <h2>Настройка синхронизации</h2>
+    <p>Введи GitHub Personal Access Token для синхронизации словаря между устройствами. Токен сохраняется только на этом устройстве.</p>
+    <input type="password" id="token-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+    <div class="setup-error" id="setup-error">Не удалось подключиться. Проверь токен.</div>
+    <button class="btn btn-primary" style="width:100%" onclick="saveToken()">Подключить</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none;">
+  <header>
+    <div class="logo">ქართ<span>ული</span></div>
+    <div class="header-right">
+      <div class="sync-status">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-text">—</span>
+      </div>
+      <div class="tabs">
+        <button class="tab active" onclick="showView('dict', this)">
+          Словарь <span class="count-badge" id="word-count">0</span>
+        </button>
+        <button class="tab" onclick="showView('cards', this)">Карточки</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- DICTIONARY -->
+    <div class="view active" id="view-dict">
+      <div class="toolbar">
+        <div class="search-wrap">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/>
+          </svg>
+          <input type="text" id="search-input" placeholder="Поиск по словарю..." oninput="renderList()">
+        </div>
+        <button class="btn btn-ghost" onclick="toggleAddForm()">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 1v12M1 7h12"/></svg>
+          Добавить
+        </button>
+      </div>
+
+      <div class="add-form" id="add-form">
+        <h3>Новое слово</h3>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Грузинский</label>
+            <input type="text" id="inp-ka" placeholder="ვაშლი" onkeydown="formKeydown(event)">
+          </div>
+          <div class="form-field">
+            <label>Транскрипция</label>
+            <input type="text" id="inp-tr" placeholder="vashli" onkeydown="formKeydown(event)">
+          </div>
+          <div class="form-field">
+            <label>Русский</label>
+            <input type="text" id="inp-ru" placeholder="яблоко" onkeydown="formKeydown(event)">
+          </div>
+        </div>
+        <div class="form-actions">
+          <span class="saving-text" id="saving-text">Сохраняю...</span>
+          <button class="btn btn-ghost" onclick="toggleAddForm()">Отмена</button>
+          <button class="btn btn-primary" id="add-btn" onclick="addWord()">Добавить слово</button>
+        </div>
+      </div>
+
+      <div class="word-list">
+        <div class="word-list-header">
+          <div class="col-sort" onclick="sortBy('ka')">Грузинский <span id="sort-ka"></span></div>
+          <div>Транскрипция</div>
+          <div class="col-sort" onclick="sortBy('ru')">Русский <span id="sort-ru"></span></div>
+          <div></div>
+        </div>
+        <div id="word-list-body"></div>
+      </div>
+    </div>
+
+    <!-- FLASHCARDS -->
+    <div class="view" id="view-cards">
+      <div id="fc-empty-state" class="fc-empty" style="display:none;">
+        <div class="empty-icon">ა</div>
+        <p>Словарь пуст. Добавьте первые слова.</p>
+      </div>
+      <div id="fc-main">
+        <div class="fc-controls">
+          <div class="fc-progress">Карточка <strong id="fc-idx">1</strong> из <strong id="fc-total">0</strong></div>
+          <div class="fc-actions">
+            <button class="btn btn-ghost" onclick="shuffleCards()">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M1 4h9.5a4 4 0 0 1 4 4v0"/><path d="M11.5 1.5l3 2.5-3 2.5"/>
+                <path d="M15 12H5.5a4 4 0 0 1-4-4v0"/><path d="M4.5 9.5L1.5 12l3 2.5"/>
+              </svg>
+              Перемешать
+            </button>
+            <button class="btn btn-ghost" onclick="resetCards()">Сначала</button>
+          </div>
+        </div>
+        <div class="card-stage">
+          <div class="card-wrap" onclick="flipCard()">
+            <div class="card-inner" id="card-inner">
+              <div class="card-face card-front">
+                <div class="card-ka" id="card-ka"></div>
+                <div class="card-tr" id="card-tr-front"></div>
+              </div>
+              <div class="card-face card-back">
+                <div class="card-ka" id="card-ka-back"></div>
+                <div class="card-tr" id="card-tr-back"></div>
+                <div class="card-ru" id="card-ru"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card-nav">
+          <button class="nav-btn" id="btn-prev" onclick="prevCard()">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4L6 9l5 5"/></svg>
+          </button>
+          <button class="nav-btn" id="btn-next" onclick="nextCard()">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4l5 5-5 5"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const REPO = 'Khinklisator/Georgianwords';
+const FILE = 'words.json';
+const API  = `https://api.github.com/repos/${REPO}/contents/${FILE}`;
+
+let words    = [];
+let fileSha  = null;
+let sortCol  = 'ka';
+let sortDir  = 1;
+let cardOrder = [];
+let cardIdx  = 0;
+let isFlipped = false;
+let isSaving  = false;
+
+function getToken() { return localStorage.getItem('gh_token'); }
+
+function setSync(state, text) {
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-text');
+  dot.className = 'sync-dot ' + state;
+  txt.textContent = text;
+}
+
+async function init() {
+  const token = getToken();
+  if (!token) { showSetup(); return; }
+  showApp();
+  await loadWords();
+}
+
+function showSetup() {
+  document.getElementById('setup-screen').style.display = 'block';
+  document.getElementById('app').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+}
+
+async function saveToken() {
+  const t = document.getElementById('token-input').value.trim();
+  if (!t) return;
+  localStorage.setItem('gh_token', t);
+  const err = document.getElementById('setup-error');
+  err.style.display = 'none';
+  showApp();
+  const ok = await loadWords();
+  if (!ok) {
+    localStorage.removeItem('gh_token');
+    showSetup();
+    err.style.display = 'block';
+  }
+}
+
+async function loadWords() {
+  setSync('loading', 'Загрузка...');
+  try {
+    const res = await fetch(API, {
+      headers: { Authorization: `token ${getToken()}`, Accept: 'application/vnd.github.v3+json' }
+    });
+    if (!res.ok) { setSync('err', 'Ошибка'); return false; }
+    const data = await res.json();
+    fileSha = data.sha;
+    words = JSON.parse(atob(data.content.replace(/\n/g, '')));
+    setSync('ok', 'Синхронизировано');
+    renderList();
+    return true;
+  } catch(e) {
+    setSync('err', 'Нет связи');
+    return false;
+  }
+}
+
+async function saveWords() {
+  isSaving = true;
+  document.getElementById('saving-text').style.display = 'inline';
+  document.getElementById('add-btn').disabled = true;
+  setSync('loading', 'Сохранение...');
+  try {
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(words, null, 2))));
+    const body = { message: 'update words', content, sha: fileSha };
+    const res = await fetch(API, {
+      method: 'PUT',
+      headers: {
+        Authorization: `token ${getToken()}`,
+        Accept: 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) { setSync('err', 'Ошибка сохранения'); return false; }
+    const data = await res.json();
+    fileSha = data.content.sha;
+    setSync('ok', 'Синхронизировано');
+    return true;
+  } catch(e) {
+    setSync('err', 'Нет связи');
+    return false;
+  } finally {
+    isSaving = false;
+    document.getElementById('saving-text').style.display = 'none';
+    document.getElementById('add-btn').disabled = false;
+  }
+}
+
+function showView(v, el) {
+  document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  el.classList.add('active');
+  if (v === 'cards') { loadWords().then(() => initCards()); }
+  if (v === 'dict')  { loadWords(); }
+}
+
+function toggleAddForm() {
+  const f = document.getElementById('add-form');
+  f.classList.toggle('open');
+  if (f.classList.contains('open')) document.getElementById('inp-ka').focus();
+}
+
+function formKeydown(e) {
+  if (e.key === 'Enter') addWord();
+  if (e.key === 'Escape') toggleAddForm();
+}
+
+async function addWord() {
+  if (isSaving) return;
+  const ka = document.getElementById('inp-ka').value.trim();
+  const tr = document.getElementById('inp-tr').value.trim();
+  const ru = document.getElementById('inp-ru').value.trim();
+  if (!ka || !ru) { document.getElementById(!ka ? 'inp-ka' : 'inp-ru').focus(); return; }
+  words.push({ id: Date.now(), ka, tr, ru });
+  renderList();
+  document.getElementById('inp-ka').value = '';
+  document.getElementById('inp-tr').value = '';
+  document.getElementById('inp-ru').value = '';
+  document.getElementById('inp-ka').focus();
+  await saveWords();
+}
+
+async function deleteWord(id) {
+  if (isSaving) return;
+  words = words.filter(w => w.id !== id);
+  renderList();
+  await saveWords();
+}
+
+function sortBy(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = 1; }
+  renderList();
+}
+
+function renderList() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  let filtered = words.filter(w =>
+    w.ka.toLowerCase().includes(q) || w.ru.toLowerCase().includes(q) || (w.tr||'').toLowerCase().includes(q)
+  );
+  filtered.sort((a, b) => (a[sortCol]||'').localeCompare(b[sortCol]||'', 'ru') * sortDir);
+  ['ka','ru'].forEach(c => {
+    const el = document.getElementById('sort-' + c);
+    if (el) el.textContent = sortCol === c ? (sortDir === 1 ? ' ↑' : ' ↓') : '';
+  });
+  document.getElementById('word-count').textContent = words.length;
+  const body = document.getElementById('word-list-body');
+  if (!filtered.length) {
+    body.innerHTML = `<div class="empty-state"><div class="empty-icon">ა</div><p>${q ? 'Ничего не найдено' : 'Словарь пуст'}</p></div>`;
+    return;
+  }
+  body.innerHTML = filtered.map(w => `
+    <div class="word-item">
+      <div class="word-ka">${esc(w.ka)}</div>
+      <div class="word-tr">${esc(w.tr||'')}</div>
+      <div class="word-ru">${esc(w.ru)}</div>
+      <button class="del-btn" onclick="deleteWord(${w.id})">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 2l9 9M11 2L2 11"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function initCards() {
+  cardOrder = words.map((_, i) => i);
+  cardIdx = 0; isFlipped = false;
+  document.getElementById('card-inner').classList.remove('flipped');
+  renderCard();
+}
+
+function shuffleCards() {
+  for (let i = cardOrder.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cardOrder[i], cardOrder[j]] = [cardOrder[j], cardOrder[i]];
+  }
+  cardIdx = 0; isFlipped = false;
+  document.getElementById('card-inner').classList.remove('flipped');
+  renderCard();
+}
+
+function resetCards() {
+  cardOrder = words.map((_, i) => i);
+  cardIdx = 0; isFlipped = false;
+  document.getElementById('card-inner').classList.remove('flipped');
+  renderCard();
+}
+
+function renderCard() {
+  const n = cardOrder.length;
+  document.getElementById('fc-empty-state').style.display = n === 0 ? 'block' : 'none';
+  document.getElementById('fc-main').style.display = n === 0 ? 'none' : 'block';
+  if (!n) return;
+  const w = words[cardOrder[cardIdx]];
+  document.getElementById('card-ka').textContent = w.ka;
+  document.getElementById('card-tr-front').textContent = w.tr || '';
+  document.getElementById('card-ka-back').textContent = w.ka;
+  document.getElementById('card-tr-back').textContent = w.tr || '';
+  document.getElementById('card-ru').textContent = w.ru;
+  document.getElementById('fc-idx').textContent = cardIdx + 1;
+  document.getElementById('fc-total').textContent = n;
+  document.getElementById('btn-prev').disabled = cardIdx === 0;
+  document.getElementById('btn-next').disabled = cardIdx === n - 1;
+}
+
+function flipCard() {
+  isFlipped = !isFlipped;
+  document.getElementById('card-inner').classList.toggle('flipped', isFlipped);
+}
+
+function nextCard() {
+  if (cardIdx < cardOrder.length - 1) { cardIdx++; isFlipped = false; document.getElementById('card-inner').classList.remove('flipped'); renderCard(); }
+}
+function prevCard() {
+  if (cardIdx > 0) { cardIdx--; isFlipped = false; document.getElementById('card-inner').classList.remove('flipped'); renderCard(); }
+}
+
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('view-cards').classList.contains('active')) return;
+  if (e.key === 'ArrowRight') nextCard();
+  if (e.key === 'ArrowLeft') prevCard();
+  if (e.key === ' ') { e.preventDefault(); flipCard(); }
+});
+
+init();
+</script>
+</body>
+</html>
