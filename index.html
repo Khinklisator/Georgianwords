@@ -291,7 +291,8 @@ function showApp() {
 }
 
 async function saveToken() {
-  const t = document.getElementById('token-input').value.trim();
+  const raw = document.getElementById('token-input').value;
+  const t = raw.replace(/[^\x20-\x7E]/g, '').trim();
   if (!t) return;
   localStorage.setItem('gh_token', t);
   const err = document.getElementById('setup-error');
