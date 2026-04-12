@@ -126,9 +126,12 @@
   <div class="setup-card">
     <h2>Настройка синхронизации</h2>
     <p>Введи GitHub Personal Access Token. Токен сохраняется только на этом устройстве.</p>
-    <input class="setup-input" type="text" id="token-input" placeholder="ghp_xxxxxxxxxxxxxxxx"
+    <textarea id="token-input" placeholder="ghp_xxxxxxxxxxxxxxxx"
       autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-      onkeydown="if(event.key==='Enter') saveToken()">
+      rows="2"
+      style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:13px;color:var(--text);background:var(--bg);outline:none;resize:none;margin-bottom:8px;line-height:1.5;"
+      oninput="previewToken()"></textarea>
+    <div id="token-preview" style="font-size:11px;color:var(--text-muted);margin-bottom:12px;min-height:16px;font-family:monospace;"></div>
     <div class="setup-error" id="setup-error">Не удалось подключиться. Проверь токен.</div>
     <button class="btn btn-primary" style="width:100%" onclick="saveToken()">Подключить</button>
   </div>
@@ -238,7 +241,21 @@ let cardIdx  = 0;
 let isFlipped = false;
 let isSaving  = false;
 
-function getToken() { return localStorage.getItem('gh_token'); }
+function previewToken() {
+  const raw = document.getElementById('token-input').value;
+  const t = raw.replace(/[^a-zA-Z0-9_\-]/g, '');
+  const preview = document.getElementById('token-preview');
+  if (t.length > 0) {
+    preview.textContent = `Будет отправлено (${t.length} символов): ${t.slice(0,6)}...${t.slice(-4)}`;
+  } else {
+    preview.textContent = '';
+  }
+}
+
+function cleanToken() {
+  const raw = document.getElementById('token-input').value;
+  return raw.replace(/[^a-zA-Z0-9_\-]/g, '');
+}
 function ghHeaders() { return { Authorization: `token ${getToken()}`, Accept: 'application/vnd.github.v3+json' }; }
 
 function setSync(state, text) {
@@ -262,8 +279,10 @@ function showApp() {
   document.getElementById('app').style.display = 'block';
 }
 
+function getToken() { return localStorage.getItem('gh_token'); }
+
 async function saveToken() {
-  const t = document.getElementById('token-input').value.replace(/\s/g, '');
+  const t = cleanToken();
   if (!t) return;
   const err = document.getElementById('setup-error');
   err.style.display = 'none';
