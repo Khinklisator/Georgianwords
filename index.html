@@ -294,23 +294,24 @@ async function saveToken() {
   const raw = document.getElementById('token-input').value;
   const t = raw.replace(/[^\x20-\x7E]/g, '').trim();
   if (!t) return;
-  localStorage.setItem('gh_token', t);
   const err = document.getElementById('setup-error');
   err.style.display = 'none';
-  showApp();
-  const ok = await loadWords();
+  const ok = await loadWords(t);
   if (!ok) {
-    localStorage.removeItem('gh_token');
-    showSetup();
     err.style.display = 'block';
+  } else {
+    localStorage.setItem('gh_token', t);
+    showApp();
   }
 }
 
-async function loadWords() {
+async function loadWords(tokenOverride) {
+  const token = tokenOverride || getToken();
+  if (!token) return false;
   setSync('loading', 'Загрузка...');
   try {
     const res = await fetch(API, {
-      headers: { Authorization: `Bearer ${getToken()}`, Accept: 'application/vnd.github.v3+json' }
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github.v3+json' }
     });
     if (!res.ok) { setSync('err', 'Ошибка'); return false; }
     const data = await res.json();
