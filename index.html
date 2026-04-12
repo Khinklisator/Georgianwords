@@ -256,7 +256,10 @@ function cleanToken() {
   const raw = document.getElementById('token-input').value;
   return raw.replace(/[^a-zA-Z0-9_\-]/g, '');
 }
-function ghHeaders() { return { Authorization: `token ${getToken()}`, Accept: 'application/vnd.github.v3+json' }; }
+
+function ghHeaders() {
+  return { Authorization: `Bearer ${getToken()}`, Accept: 'application/vnd.github+json' };
+}
 
 function setSync(state, text) {
   document.getElementById('sync-dot').className = 'sync-dot ' + state;
@@ -288,15 +291,26 @@ async function saveToken() {
   err.style.display = 'none';
   setSync('loading', 'Проверка...');
   try {
-    // test write access with a harmless HEAD-like call
-    const res = await fetch(`https://api.github.com/repos/${REPO}`, {
-      headers: { Authorization: `token ${t}`, Accept: 'application/vnd.github.v3+json' }
+    const res = await fetch(API, {
+      headers: { Authorization: `Bearer ${t}`, Accept: 'application/vnd.github+json' }
     });
-    if (!res.ok) { err.style.display = 'block'; setSync('err', ''); return; }
+    const data = await res.json();
+    if (!res.ok) {
+      err.textContent = data.message || 'Не удалось подключиться. Проверь токен.';
+      err.style.display = 'block';
+      setSync('err', 'Ошибка');
+      return;
+    }
+    fileSha = data.sha;
+    const binary = atob(data.content.replace(/\n/g, ''));
+    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+    words = JSON.parse(new TextDecoder('utf-8').decode(bytes));
     localStorage.setItem('gh_token', t);
     showApp();
-    await loadWords();
+    setSync('ok', 'Синхронизировано');
+    renderList();
   } catch(e) {
+    err.textContent = 'Нет связи';
     err.style.display = 'block';
     setSync('err', 'Нет связи');
   }
@@ -305,8 +319,7 @@ async function saveToken() {
 async function loadWords() {
   setSync('loading', 'Загрузка...');
   try {
-    // read without auth — repo is public
-    const res = await fetch(API, { headers: { Accept: 'application/vnd.github.v3+json' } });
+    const res = await fetch(API, { headers: ghHeaders() });
     if (!res.ok) { setSync('err', 'Ошибка'); return false; }
     const data = await res.json();
     fileSha = data.sha;
@@ -334,8 +347,12 @@ async function saveWords() {
       headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: 'update words', content, sha: fileSha })
     });
-    if (!res.ok) { setSync('err', 'Ошибка сохранения'); return false; }
     const data = await res.json();
+    if (!res.ok) {
+      console.error('GitHub error:', data);
+      setSync('err', data.message || 'Ошибка сохранения');
+      return false;
+    }
     fileSha = data.content.sha;
     setSync('ok', 'Синхронизировано');
     return true;
