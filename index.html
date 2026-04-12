@@ -288,17 +288,14 @@ async function saveToken() {
   err.style.display = 'none';
   setSync('loading', 'Проверка...');
   try {
-    const res = await fetch(API, { headers: { Authorization: `token ${t}`, Accept: 'application/vnd.github.v3+json' } });
+    // test write access with a harmless HEAD-like call
+    const res = await fetch(`https://api.github.com/repos/${REPO}`, {
+      headers: { Authorization: `token ${t}`, Accept: 'application/vnd.github.v3+json' }
+    });
     if (!res.ok) { err.style.display = 'block'; setSync('err', ''); return; }
-    const data = await res.json();
-    fileSha = data.sha;
-    const binary = atob(data.content.replace(/\n/g, ''));
-    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
-    words = JSON.parse(new TextDecoder('utf-8').decode(bytes));
     localStorage.setItem('gh_token', t);
     showApp();
-    setSync('ok', 'Синхронизировано');
-    renderList();
+    await loadWords();
   } catch(e) {
     err.style.display = 'block';
     setSync('err', 'Нет связи');
@@ -308,7 +305,8 @@ async function saveToken() {
 async function loadWords() {
   setSync('loading', 'Загрузка...');
   try {
-    const res = await fetch(API, { headers: ghHeaders() });
+    // read without auth — repo is public
+    const res = await fetch(API, { headers: { Accept: 'application/vnd.github.v3+json' } });
     if (!res.ok) { setSync('err', 'Ошибка'); return false; }
     const data = await res.json();
     fileSha = data.sha;
