@@ -69,6 +69,14 @@
   .del-btn { width: 28px; height: 28px; border: none; background: transparent; border-radius: 6px; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; justify-content: center; transition: all 0.15s; opacity: 0; }
   .word-item:hover .del-btn { opacity: 1; }
   .del-btn:hover { background: #FEF0EC; color: var(--accent); }
+  .word-item.editing { background: #FDFCFA; padding: 8px 16px; gap: 8px; }
+  .word-item.editing input { height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; font-family: var(--font); font-size: 14px; color: var(--text); background: var(--surface); outline: none; width: 100%; }
+  .word-item.editing input:focus { border-color: var(--accent-mid); }
+  .edit-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .edit-save { height: 34px; padding: 0 14px; border-radius: 6px; border: none; background: var(--accent); color: white; font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer; }
+  .edit-save:hover { background: #A04D22; }
+  .edit-cancel { height: 34px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--border); background: transparent; font-family: var(--font); font-size: 13px; color: var(--text-muted); cursor: pointer; }
+  .edit-cancel:hover { background: var(--bg); }
   .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
   .empty-icon { font-size: 32px; color: var(--border); margin-bottom: 12px; }
 
@@ -415,17 +423,56 @@ function renderList() {
     return;
   }
   body.innerHTML = filtered.map(w => `
-    <div class="word-item">
+    <div class="word-item" id="row-${w.id}">
       <div class="word-ka">${esc(w.ka)}</div>
       <div class="word-tr">${esc(w.tr||'')}</div>
       <div class="word-ru">${esc(w.ru)}</div>
-      <button class="del-btn" onclick="deleteWord(${w.id})">
+      <button class="del-btn" onclick="event.stopPropagation(); deleteWord(${w.id})">
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 2l9 9M11 2L2 11"/></svg>
       </button>
     </div>`).join('');
+
+  filtered.forEach(w => {
+    document.getElementById('row-' + w.id).addEventListener('click', () => startEdit(w.id));
+  });
 }
 
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function startEdit(id) {
+  if (isSaving) return;
+  const w = words.find(x => x.id === id);
+  if (!w) return;
+  const row = document.getElementById('row-' + id);
+  if (!row || row.classList.contains('editing')) return;
+  row.classList.add('editing');
+  row.innerHTML = `
+    <input id="edit-ka-${id}" value="${esc(w.ka)}" placeholder="ვაშლი" onkeydown="editKeydown(event,${id})">
+    <input id="edit-tr-${id}" value="${esc(w.tr||'')}" placeholder="vashli" onkeydown="editKeydown(event,${id})">
+    <input id="edit-ru-${id}" value="${esc(w.ru)}" placeholder="яблоко" onkeydown="editKeydown(event,${id})">
+    <div class="edit-actions">
+      <button class="edit-cancel" onclick="renderList()">✕</button>
+      <button class="edit-save" onclick="saveEdit(${id})">✓</button>
+    </div>`;
+  document.getElementById('edit-ka-' + id).focus();
+}
+
+function editKeydown(e, id) {
+  if (e.key === 'Enter') saveEdit(id);
+  if (e.key === 'Escape') renderList();
+}
+
+async function saveEdit(id) {
+  if (isSaving) return;
+  const ka = document.getElementById('edit-ka-' + id).value.trim();
+  const tr = document.getElementById('edit-tr-' + id).value.trim();
+  const ru = document.getElementById('edit-ru-' + id).value.trim();
+  if (!ka || !ru) return;
+  const w = words.find(x => x.id === id);
+  if (w) { w.ka = ka; w.tr = tr; w.ru = ru; }
+  renderList();
+  await saveWords();
+}
+
+
 
 function initCards() {
   cardOrder = words.map((_, i) => i);
