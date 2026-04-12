@@ -128,7 +128,7 @@
   <div class="setup-card">
     <h2>Настройка синхронизации</h2>
     <p>Введи GitHub Personal Access Token для синхронизации словаря между устройствами. Токен сохраняется только на этом устройстве.</p>
-    <input type="password" id="token-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+    <input type="text" id="token-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     <div class="setup-error" id="setup-error">Не удалось подключиться. Проверь токен.</div>
     <button class="btn btn-primary" style="width:100%" onclick="saveToken()">Подключить</button>
   </div>
@@ -310,7 +310,7 @@ async function loadWords() {
   setSync('loading', 'Загрузка...');
   try {
     const res = await fetch(API, {
-      headers: { Authorization: `token ${getToken()}`, Accept: 'application/vnd.github.v3+json' }
+      headers: { Authorization: `Bearer ${getToken()}`, Accept: 'application/vnd.github.v3+json' }
     });
     if (!res.ok) { setSync('err', 'Ошибка'); return false; }
     const data = await res.json();
@@ -338,7 +338,7 @@ async function saveWords() {
     const res = await fetch(API, {
       method: 'PUT',
       headers: {
-        Authorization: `token ${getToken()}`,
+        Authorization: `Bearer ${getToken()}`,
         Accept: 'application/vnd.github.v3+json',
         'Content-Type': 'application/json'
       },
