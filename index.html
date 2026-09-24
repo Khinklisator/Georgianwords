@@ -89,6 +89,7 @@
   .form-field input { padding-left: 12px; font-size: 14px; }
   .form-actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
   .saving-text { font-size: 12px; color: var(--text-muted); display: none; }
+  .dup-text { font-size: 12px; color: var(--accent); margin-right: auto; }
 
   .fc-controls { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
   .fc-progress { font-size: 13px; color: var(--text-muted); }
@@ -173,6 +174,7 @@
           <div class="form-field"><label>Русский</label><input type="text" id="inp-ru" placeholder="яблоко" onkeydown="formKeydown(event)"></div>
         </div>
         <div class="form-actions">
+          <span class="dup-text" id="dup-text"></span>
           <span class="saving-text" id="saving-text">Сохраняю...</span>
           <button class="btn btn-ghost" onclick="toggleAddForm()">Отмена</button>
           <button class="btn btn-primary" id="add-btn" onclick="addWord()">Добавить слово</button>
@@ -416,12 +418,14 @@ function showView(v, el) {
 function toggleAddForm() {
   const f = document.getElementById('add-form');
   f.classList.toggle('open');
+  document.getElementById('dup-text').textContent = '';
   if (f.classList.contains('open')) document.getElementById('inp-ka').focus();
 }
 
 function formKeydown(e) {
   if (e.key === 'Enter') addWord();
   if (e.key === 'Escape') toggleAddForm();
+  if (e.key !== 'Enter') document.getElementById('dup-text').textContent = '';
 }
 
 async function addWord() {
@@ -430,6 +434,13 @@ async function addWord() {
   const tr = document.getElementById('inp-tr').value.trim();
   const ru = document.getElementById('inp-ru').value.trim();
   if (!ka || !ru) { document.getElementById(!ka ? 'inp-ka' : 'inp-ru').focus(); return; }
+  // Тот же ka с другим переводом допустим (ის — «тот» и «он/она/оно»), полный повтор — нет.
+  const dup = words.find(w => w.ka === ka && (w.ru||'').toLowerCase() === ru.toLowerCase());
+  if (dup) {
+    document.getElementById('dup-text').textContent = `Уже есть в словаре: ${dup.ka} — ${dup.ru}`;
+    document.getElementById('inp-ru').focus();
+    return;
+  }
   words.push({ id: Date.now(), ka, tr, ru });
   document.getElementById('inp-ka').value = '';
   document.getElementById('inp-tr').value = '';
