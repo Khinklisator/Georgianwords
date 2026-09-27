@@ -169,7 +169,7 @@
       <div class="add-form" id="add-form">
         <h3>Новое слово</h3>
         <div class="form-row">
-          <div class="form-field"><label>Грузинский</label><input type="text" id="inp-ka" placeholder="ვაშლი" onkeydown="formKeydown(event)"></div>
+          <div class="form-field"><label>Грузинский</label><input type="text" id="inp-ka" placeholder="ვაშლი" oninput="autoTr(this, 'inp-tr')" onkeydown="formKeydown(event)"></div>
           <div class="form-field"><label>Транскрипция</label><input type="text" id="inp-tr" placeholder="vashli" onkeydown="formKeydown(event)"></div>
           <div class="form-field"><label>Русский</label><input type="text" id="inp-ru" placeholder="яблоко" onkeydown="formKeydown(event)"></div>
         </div>
@@ -422,6 +422,27 @@ function toggleAddForm() {
   if (f.classList.contains('open')) document.getElementById('inp-ka').focus();
 }
 
+// Схема транскрипции — та же, что в test_words.py: смычные с апострофом, ხ — kh, ღ — gh.
+const TRANSLIT = {
+  'ა':'a','ბ':'b','გ':'g','დ':'d','ე':'e','ვ':'v','ზ':'z','თ':'t','ი':'i','კ':"k'",'ლ':'l',
+  'მ':'m','ნ':'n','ო':'o','პ':"p'",'ჟ':'zh','რ':'r','ს':'s','ტ':"t'",'უ':'u','ფ':'p','ქ':'k',
+  'ღ':'gh','ყ':"q'",'შ':'sh','ჩ':'ch','ც':'ts','ძ':'dz','წ':"ts'",'ჭ':"ch'",'ხ':'kh','ჯ':'j','ჰ':'h'
+};
+
+function translit(ka) {
+  return Array.from(ka, c => TRANSLIT[c] ?? c).join('');
+}
+
+// Перезаписываем транскрипцию, пока она пустая или совпадает с автоматической для прежнего ka:
+// ручную правку не трогаем.
+function autoTr(kaInput, trId) {
+  const trInput = document.getElementById(trId);
+  const prev = kaInput.dataset.prevKa ?? kaInput.defaultValue;
+  const cur = trInput.value.trim();
+  if (!cur || cur === translit(prev.trim())) trInput.value = translit(kaInput.value.trim());
+  kaInput.dataset.prevKa = kaInput.value;
+}
+
 function formKeydown(e) {
   if (e.key === 'Enter') addWord();
   if (e.key === 'Escape') toggleAddForm();
@@ -443,6 +464,7 @@ async function addWord() {
   }
   words.push({ id: Date.now(), ka, tr, ru });
   document.getElementById('inp-ka').value = '';
+  delete document.getElementById('inp-ka').dataset.prevKa;
   document.getElementById('inp-tr').value = '';
   document.getElementById('inp-ru').value = '';
   document.getElementById('inp-ka').focus();
@@ -502,7 +524,7 @@ function startEdit(id) {
   if (!row || row.classList.contains('editing')) return;
   row.classList.add('editing');
   row.innerHTML = `
-    <input class="edit-inp" id="eka-${id}" value="${esc(w.ka)}" placeholder="ვაშლი" onkeydown="editKey(event,${id})">
+    <input class="edit-inp" id="eka-${id}" value="${esc(w.ka)}" placeholder="ვაშლი" oninput="autoTr(this, 'etr-${id}')" onkeydown="editKey(event,${id})">
     <input class="edit-inp" id="etr-${id}" value="${esc(w.tr||'')}" placeholder="vashli" onkeydown="editKey(event,${id})">
     <input class="edit-inp" id="eru-${id}" value="${esc(w.ru)}" placeholder="яблоко" onkeydown="editKey(event,${id})">
     <div class="edit-btns">

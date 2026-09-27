@@ -69,6 +69,13 @@ class WordsJsonTest(unittest.TestCase):
             with self.subTest(entry=w):
                 self.assertEqual(w["tr"], translit(w["ka"]))
 
+    def test_page_uses_same_scheme(self):
+        # Автозаполнение в index.html должно давать ту же транскрипцию, что проверяет тест выше.
+        html = WORDS_PATH.with_name("index.html").read_text(encoding="utf-8")
+        block = re.search(r"const TRANSLIT = \{(.*?)\};", html, re.S).group(1)
+        page = {k: a or b for k, a, b in re.findall(r"""'(.)':(?:'([^']*)'|"([^"]*)")""", block)}
+        self.assertEqual(page, TRANSLIT)
+
     def test_ru_has_no_trailing_separator(self):
         for w in self.words:
             with self.subTest(entry=w):
