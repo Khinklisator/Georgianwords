@@ -9,6 +9,20 @@ from pathlib import Path
 WORDS_PATH = Path(__file__).with_name("words.json")
 GEORGIAN = re.compile(r"[Ⴀ-ჿᲐ-Ჿⴀ-⴯]")
 
+# Схема транскрипции: придыхательные без знака (თ t, ფ p, ქ k, ჩ ch, ც ts),
+# смычные с прямым апострофом (ტ t', პ p', კ k', ჭ ch', წ ts', ყ q'), ხ — kh, ღ — gh.
+TRANSLIT = {
+    "ა": "a", "ბ": "b", "გ": "g", "დ": "d", "ე": "e", "ვ": "v", "ზ": "z", "თ": "t",
+    "ი": "i", "კ": "k'", "ლ": "l", "მ": "m", "ნ": "n", "ო": "o", "პ": "p'", "ჟ": "zh",
+    "რ": "r", "ს": "s", "ტ": "t'", "უ": "u", "ფ": "p", "ქ": "k", "ღ": "gh", "ყ": "q'",
+    "შ": "sh", "ჩ": "ch", "ც": "ts", "ძ": "dz", "წ": "ts'", "ჭ": "ch'", "ხ": "kh",
+    "ჯ": "j", "ჰ": "h",
+}
+
+
+def translit(ka):
+    return "".join(TRANSLIT.get(c, c) for c in ka)
+
 
 class WordsJsonTest(unittest.TestCase):
     @classmethod
@@ -49,6 +63,23 @@ class WordsJsonTest(unittest.TestCase):
         for w in self.words:
             with self.subTest(entry=w):
                 self.assertRegex(w["ka"], GEORGIAN)
+
+    def test_tr_follows_scheme(self):
+        for w in self.words:
+            with self.subTest(entry=w):
+                self.assertEqual(w["tr"], translit(w["ka"]))
+
+    def test_page_uses_same_scheme(self):
+        # Автозаполнение в index.html должно давать ту же транскрипцию, что проверяет тест выше.
+        html = WORDS_PATH.with_name("index.html").read_text(encoding="utf-8")
+        block = re.search(r"const TRANSLIT = \{(.*?)\};", html, re.S).group(1)
+        page = {k: a or b for k, a, b in re.findall(r"""'(.)':(?:'([^']*)'|"([^"]*)")""", block)}
+        self.assertEqual(page, TRANSLIT)
+
+    def test_ru_has_no_trailing_separator(self):
+        for w in self.words:
+            with self.subTest(entry=w):
+                self.assertNotRegex(w["ru"], r"[;,]$")
 
     def test_no_exact_duplicates(self):
         # Одно слово с разными переводами (ის — «тот» и «он/она/оно») допустимо, полная копия — нет.
